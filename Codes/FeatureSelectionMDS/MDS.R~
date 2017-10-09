@@ -1,0 +1,35 @@
+################################################################################
+################################################################################
+# Última modificação: 20/06/16
+# Objetivo: 
+# Autor: Tiago Tambonis.
+################################################################################
+################################################################################
+
+source("Suvrel_normalization.R") # Load the Mean 0, variance 1 normalization function.
+source("Suvrel_cals.R") #Load the Suvrel implementation function.
+
+library(tweeDEseqCountData) 
+
+#Seleção do conjunto treino
+data(pickrell) #pickrell.eset of Lymphoblastoid RNA-Seq, African (Nigeria) pop. of 69
+data(montgomery) #montgomery.eset of Lymphoblastoid RNA-Seq, Euro (Utah) pop. of 60
+PM.eset <- combine(pickrell.eset, montgomery.eset) #combined dataset, to test normalization methods
+countsPM <- exprs(PM.eset) #will test for DE between the 2 populations
+d.PM <- DGEList(counts=countsPM[,c(samples)], group = PM.eset$study[c(samples)])
+keep <- rowSums(cpm(d.PM)>0) >= 1 #Filter.
+d.PM <- d.PM[keep,]
+
+# N rows (objects) x p columns (variables)
+# each row identified by a unique row name
+
+d <- dist(d.PM$counts) # euclidean distances between the rows
+fit <- cmdscale(d,eig=TRUE, k=2) # k is the number of dim
+fit # view results
+
+# plot solution
+x <- fit$points[,1]
+y <- fit$points[,2]
+plot(x, y, xlab="Coordinate 1", ylab="Coordinate 2",
+     main="Metric MDS", type="n")
+text(x, y, labels = row.names(mydata), cex=.7) 
