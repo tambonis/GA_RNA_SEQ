@@ -1,0 +1,179 @@
+################################################################################
+################################################################################
+#Objective: Produce the study of robustness.
+#Author: Tiago Tambonis.
+#Additional informations: 
+#Date: 
+################################################################################
+################################################################################
+
+#################
+##Load 
+#################
+source("Geometric_Approach.R")
+source("RPM_normalization.R")
+source("GA_filter.R")
+source("run_edgeR.R")
+source("run_DESeq.R")
+source("run_PoisSeq.R")
+source("run_limma.R")
+library(tweeDEseqCountData) 
+
+data(montgomery) # Montgomery summarized read counts
+data(pickrell) #Pickrell summarized read counts
+PM.dat <- combine(pickrell.eset, montgomery.eset) #Combined data.
+
+#k.sampled <- seq(15, 50, by = 5)
+k.sampled <- seq(15, 50, by = 5) #This vector store the number of samples to 
+#be selected within a condition.
+total.repetion <- 10 #Total number of repetions. 
+k.topgenes <- 100 #Number of top genes that will be analysed.
+message("Number of repetions: ", total.repetion)
+message("Number of selected samples: ", length(k.sampled))
+
+#These lists will store the values of the overlaps.
+k.overlap.GA <- c() 
+k.overlap.edger <- c()
+k.overlap.deseq <- c()
+k.overlap.poissonseq <- c()
+k.overlap.limma <- c()
+for (i in seq(1:length(k.sampled))){#Number of experiments that will be selected.
+  
+  message("Selected sampling: ", k.sampled[i])
+  
+  list.top.GA <- c()
+  list.top.edger <- c()
+  list.top.deseq <- c()
+  list.top.poissonseq <- c()
+  list.top.limma <- c()
+  for (j in seq(1:total.repetion)){#Number of repetions.
+    
+    set.seed(seed=NULL) #Due to the PoissonSeq's structure.
+    
+    #Guarantee that at leat two experiments of each condition will be selected.
+    samples <- sort(sample(1:129, k.sampled[i], replace = F)) 
+    check <- sum(c(sum(as.logical(samples < 69)) >= 2, (sum(as.logical(samples > 69)) >= 2)))
+    while(check < 2) { 
+      samples <- sort(sample(1:129, k.sampled[i], replace = F))
+      check <- sum(c(sum(as.logical(samples < 69)) >= 2, (sum(as.logical(samples > 69)) >= 2)))
+    }
+    
+    message("GA")
+    ##############
+    ## GA
+    ##############
+    r.edger <- list(runedgeR(PM.dat=PM.dat, samples = samples)) #The edgeR results 
+    counts.GA <- r.edger[[1]]$counts$counts #Facilitate the development of the code.
+    
+    counts.GA<- GA.filter(counts.dat = counts.GA)
+    counts.GA <- RPM_normalization(counts.dat = counts.GA)
+    counts.GA <- log2(counts.GA)
+    
+    group <- c(rep(1, sum(as.logical(samples <= 69))), rep(2, sum(as.logical(samples > 69)))) 
+    GA_results <- GA(counts.dat = counts.GA, group = group)
+    
+    top.GA <- sort(GA_results, decreasing = TRUE)[1:k.topgenes]
+    top.GA <- names(top.GA)
+    list.top.GA <- cbind(list.top.GA, top.GA)
+  
+    ##############
+    ## edgeR
+    ##############
+    top.edger <- row.names(r.edger[[1]]$de)[1:k.topgenes]
+    list.top.edger <- cbind(list.top.edger, top.edger)
+    
+    message("edgeR")
+    
+    ##############
+    ## DESeq
+    ##############
+    r.deseq <- list(runDESeq(PM.dat=PM.dat, samples = samples))
+      
+    top.deseq <- r.deseq[[1]]$de$id[1:k.topgenes]
+    list.top.deseq <- cbind(list.top.deseq, top.deseq)
+    
+    message("DESeq")
+    
+    ##############
+    ## poissonSeq
+    ##############
+    
+    r.poissonseq <- list(runPoissonSeq(PM.dat=PM.dat, samples = samples))
+    
+    top.poissonseq <- row.names(data.frame(r.poissonseq))[1:k.topgenes]
+    list.top.poissonseq <- cbind(list.top.poissonseq, top.poissonseq)
+    
+    message("poissonSeq")
+  
+    ##############
+    ## limma
+    ##############
+    r.limma <- list(runLimmaQuantile(PM.dat=PM.dat, samples = samples))
+
+    top.limma <- row.names(r.limma[[1]]$tab)[1:k.topgenes]
+    list.top.limma <- cbind(list.top.limma, top.limma)
+    
+    message("limma")
+  
+  }
+  
+  ##############
+  ## Overlaps
+  ##############
+  combinations <- combn(1:total.repetion, 2, simplify = TRUE)
+  
+  overlap.GA <- c()
+  overlap.edger <- c()
+  overlap.deseq <- c()
+  overlap.poissonseq <- c()
+  overlap.limma <- c()
+
+  for (i in seq(1:dim(combinations)[2])){
+    overlap.GA <- cbind(overlap.GA, k.topgenes - sum(is.na(match(list.top.GA[,combinations[,i][1]], 
+                                                                           list.top.GA[,combinations[,i][2]]))))
+    overlap.edger <- cbind(overlap.edger, k.topgenes - sum(is.na(match(list.top.edger[,combinations[,i][1]], 
+                                                                       list.top.edger[,combinations[,i][2]]))))
+    overlap.deseq <- cbind(overlap.deseq, k.topgenes - sum(is.na(match(list.top.deseq[,combinations[,i][1]], 
+                                                                       list.top.deseq[,combinations[,i][2]]))))
+    overlap.poissonseq <- cbind(overlap.poissonseq, k.topgenes - sum(is.na(match(list.top.poissonseq[,combinations[,i][1]], 
+                                                                                 list.top.poissonseq[,combinations[,i][2]]))))
+    overlap.limma <- cbind(overlap.limma, k.topgenes - sum(is.na(match(list.top.limma[,combinations[,i][1]], 
+                                                                       list.top.limma[,combinations[,i][2]]))))
+  
+  }
+  
+  #k.overlap.GA <- cbind(k.overlap.GA, mean(overlap.GA)/k.topgenes)
+  #k.overlap.edger <- cbind(k.overlap.edger, mean(overlap.edger)/k.topgenes)
+  #k.overlap.deseq <- cbind(k.overlap.deseq, mean(overlap.deseq)/k.topgenes)
+  #k.overlap.poissonseq <- cbind(k.overlap.poissonseq, mean(overlap.poissonseq)/k.topgenes)
+  #k.overlap.limma <- cbind(k.overlap.limma, mean(overlap.limma)/k.topgenes)
+
+  k.overlap.GA <- rbind(k.overlap.GA, overlap.GA)
+  k.overlap.edger <- rbind(k.overlap.edger, overlap.edger)
+  k.overlap.deseq <- rbind(k.overlap.deseq, overlap.deseq)
+  k.overlap.poissonseq <- rbind(k.overlap.poissonseq, overlap.poissonseq)
+  k.overlap.limma <- rbind(k.overlap.limma, overlap.limma)
+  
+}  
+
+message("Salvando...")
+
+##############
+## Records
+##############
+Script.Name <- "Robustness_Study.R"
+
+save(k.overlap.GA, file="GA_overlaps.RData")
+save(k.overlap.edger, file="edgeR_overlaps.RData")
+save(k.overlap.deseq, file="DESeq_overlaps.RData")
+save(k.overlap.poissonseq, file="PoissonSeq_overlaps.RData")
+save(k.overlap.limma, file="limma_overlaps.RData")
+
+overlaps.packs <- rbind(k.overlap.GA, k.overlap.edger, k.overlap.deseq, k.overlap.poissonseq, 
+                        k.overlap.limma)
+names_packs <- c(rep('GA',8), rep('edgeR',8), rep('DESeq',8), rep('PoissonSeq',8), rep('limma',8))
+row.names(overlaps.packs) <- names_packs
+colnames(overlaps.packs) <- paste("C_", seq(1:(dim(combinations)[2])))
+write.table(overlaps.packs, file="overlaps.packs.RData", sep="\t")
+
+print(paste(Script.Name, ", DONE.", sep=""))
