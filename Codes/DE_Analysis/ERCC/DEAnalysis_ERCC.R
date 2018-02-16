@@ -119,7 +119,7 @@ colr <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C")
 ## Number of packages analized.
 kNumOfMethods <- 6
 
-qval.index <- list(DESeq=4, edgeR=4, limmaVoom=3, PoissonSeq=4, baySeq=2, Suvrel=2)
+qval.index <- list(DESeq=4, edgeR=4, limmaVoom=3, PoissonSeq=4, baySeq=2, GA=2)
 
 ## ROC
 require(pROC)
@@ -160,7 +160,7 @@ colr <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C")
 ## Number of packages analized.
 kNumOfMethods <- 6
 
-qval.index <- list(DESeq=4, edgeR=4, limmaVoom=3, PoissonSeq=4, baySeq=2, Suvrel=2)
+qval.index <- list(DESeq=4, edgeR=4, limmaVoom=3, PoissonSeq=4, baySeq=2, GA=2)
 
 ## ROC
 require(pROC)
