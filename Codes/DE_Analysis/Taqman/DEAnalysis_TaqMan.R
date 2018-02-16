@@ -115,7 +115,7 @@ colr <- c("#A6CEE3", "#1F78B4", "#B2DF8A", "#33A02C", "#FB9A99", "#E31A1C")
 kNumOfMethods <- 6
 
 ## list of adj.pval columns, FDR or relevances
-qval.index <- list(DESeq=3,  edgeR=4, limmaVoom=3, PoissonSeq=4, baySeq=3, Suvrel=2)
+qval.index <- list(DESeq=3,  edgeR=4, limmaVoom=3, PoissonSeq=4, baySeq=3, GA=2)
 
 ##############
 ## plot ROC
